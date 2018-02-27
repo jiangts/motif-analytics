@@ -123,7 +123,8 @@ def graphPeoplePerRoom(people_per_room_dict):
 	
 	
 #creates an excel spreadsheet where you can see the user and each of the rooms
-#that they have been a part of	
+#that they have been a part of, and can select a comprehensive/more fun graph from 
+#the excel options
 def userExcel(id2room):
 	workbook = xlsxwriter.Workbook('Motif_UserID_to_Sessions.xlsx')
 	worksheet = workbook.add_worksheet()
@@ -170,6 +171,7 @@ def main():
 		print item
 	room2report, id2room = iterateRows(data['query_result']['data']['rows'], id2room, room2report, room2users)
 	people_per_room_dict = countPeoplePerRoom(room2report)
+	print people_per_room_dict
 	userExcel(id2room)
 	graphPeoplePerRoom(people_per_room_dict)
 	#create(data)
