@@ -88,7 +88,10 @@ def decodeRow(row):
 def calculateRoomTime(roomID, timeStamp, action):
 	#time = timeStamp[11:13] + '.' + timeStamp[14:16]
 	#time = float(time)
-	fmt = '%Y-%m-%dT%H:%M:%S.%f'
+	print timeStamp
+	timeStamp = timeStamp[0:8] + ' ' +timeStamp[9:]
+	print timeStamp
+	fmt = '%Y-%m-%d %H:%M:%S.%f'
 	d1 = datetime.strptime(timeStamp, fmt)
 	d1_ts = time.mktime(d1.timetuple())
 	if action == "start":
@@ -170,6 +173,8 @@ def main():
 		print item		
 	iterateRows(data['query_result']['data']['rows'])
 	#working with args
+	
+def dont():
 	args = sys.argv
 	if args[1] == "graph":
 		if args[2] == "users-per-room":
