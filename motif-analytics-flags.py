@@ -20,8 +20,15 @@ API_URL = "https://redash.hugedata.ml/api/queries/4/results.json?api_key=" + API
 
 #because we aren't doing anything really sketchy, we should be able to use global dicts
 #to track what we need/want
+
+#room2report is a dictionary that is organized as follows:
+#roomID: start time, end time, time in hours, domain, domain, domain, domain
 room2report = defaultdict(list)
+#userID maps to a set of all the rooms that it is associated with, so we can
+#see who our most active users are
 id2room = defaultdict(set)
+#roomID maps to a set of all the userIDs that were associated with that room
+#throughout the lifetime of the room
 room2users = defaultdict(set)
 
 #going through each row and then using a dict for mapping
@@ -46,8 +53,9 @@ def decodeRow(row):
 		roomID = 0
 	else:
 		roomID = row["room-id"]
-	if userAction == "add-session":
+	if userAction == "add-session" and roomID not 0:
 		domainName = row["origin"]
+		room2report[roomID].append(domainName)
 	timeStamp = row["createdAt"]
 	
 	#generate all roomID to a list of users that are in the room
@@ -73,9 +81,11 @@ def decodeRow(row):
 	else:
 		id2room[userID] = set([roomID])
 	return
-			
+
+#stores the room time in the 0 and 1 index of the room2report dictionary
+#at the 0 is the start time (when the room id is assigned) and at the 
+#1 is the end time of the room	
 def calculateRoomTime(roomID, timeStamp, action):
-	#print room2report
 	time = timeStamp[11:13] + '.' + timeStamp[14:16]
 	time = float(time)
 	print time
@@ -84,8 +94,6 @@ def calculateRoomTime(roomID, timeStamp, action):
 		room2report[roomID].insert(0,time)
 	else:
 		room2report[roomID].insert(1,time)
-		#room2report[roomID].insert(2, 100000)
-		#room2report[roomID].insert(2, 200000)
 	return
 
 
