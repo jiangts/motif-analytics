@@ -13,6 +13,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 import os
+from datetime import datetime
+import time
 
 
 API_KEY = os.environ['MOTIF_ANALYTICS_KEY']
@@ -22,7 +24,8 @@ API_URL = "https://redash.hugedata.ml/api/queries/4/results.json?api_key=" + API
 #to track what we need/want
 
 #room2report is a dictionary that is organized as follows:
-#roomID: start time, end time, time in hours, domain, domain, domain, domain
+#roomID: start time, end time, domain, domain, domain, domain... all domains
+#to find the users that were in that room you can use the room2users dictionary
 room2report = defaultdict(list)
 #userID maps to a set of all the rooms that it is associated with, so we can
 #see who our most active users are
@@ -34,13 +37,10 @@ room2users = defaultdict(set)
 #going through each row and then using a dict for mapping
 #attempting to aggregate data so that you can query by user id and by room
 def iterateRows(data):
-	count = 0
-	for row in data:	
-		count = count + 1
+	for row in data:
 		decodeRow(row)
 	return
 
-			
 #by iterating through the data one time, we should capture all of the relevant 
 #information into a dictionary
 def decodeRow(row):
@@ -53,7 +53,7 @@ def decodeRow(row):
 		roomID = 0
 	else:
 		roomID = row["room-id"]
-	if userAction == "add-session" and roomID not 0:
+	if userAction == "add-session" and roomID != 0:
 		domainName = row["origin"]
 		room2report[roomID].append(domainName)
 	timeStamp = row["createdAt"]
@@ -86,33 +86,34 @@ def decodeRow(row):
 #at the 0 is the start time (when the room id is assigned) and at the 
 #1 is the end time of the room	
 def calculateRoomTime(roomID, timeStamp, action):
-	time = timeStamp[11:13] + '.' + timeStamp[14:16]
-	time = float(time)
-	print time
-	print timeStamp
+	#time = timeStamp[11:13] + '.' + timeStamp[14:16]
+	#time = float(time)
+	fmt = '%Y-%m-%dT%H:%M:%S.%f'
+	d1 = datetime.strptime(timeStamp, fmt)
+	d1_ts = time.mktime(d1.timetuple())
 	if action == "start":
-		room2report[roomID].insert(0,time)
+		#room2report[roomID].insert(0,time)
+		room2report[roomID].insert(0,d1_ts)
 	else:
-		room2report[roomID].insert(1,time)
+		#room2report[roomID].insert(1,time)
+		room2report[roomID].insert(1,d1_ts)
 	return
 
-
 #gets metrics on total number of rooms and the number of people per room	
-def countPeoplePerRoom(room2report):
+def countPeoplePerRoom():
 	key_count = 0
 	people_per_room_list = defaultdict(int)
-	for key, value in room2report.iteritems():
+	for key, value in room2users.iteritems():
 		key_count = key_count + 1
-		if (len(room2report[key])) in people_per_room_list:
-			x = people_per_room_list[(len(room2report[key]))] + 1 
-			people_per_room_list[(len(room2report[key]))] = x
+		if (len(room2users[key])) in people_per_room_list:
+			x = people_per_room_list[(len(room2users[key]))] + 1 
+			people_per_room_list[(len(room2users[key]))] = x
 		else:
-			people_per_room_list[(len(room2report[key]))] = 1
-	#print key_count
+			people_per_room_list[(len(room2users[key]))] = 1
 	return people_per_room_list
 
 #creates a simple matplotlib graph for the number of people per room
-def graphPeoplePerRoom(people_per_room_dict):
+def graphRoom(people_per_room_dict):
 	values_list = list((people_per_room_dict).values())
 	keys_list = list((people_per_room_dict).keys())
 	max_users_per_room = max(keys_list)
@@ -120,10 +121,47 @@ def graphPeoplePerRoom(people_per_room_dict):
 	plt.barh(y_pos, values_list, align='center', alpha=0.5)
 	plt.yticks(y_pos, keys_list)
 	plt.xlabel('Count')
-	plt.title('Instances of Room Size')
+	plt.title('Instances')
 	plt.show()
 	print type(keys_list[0])
 	print type(values_list[0])
+	
+#this is the length of each row of room2report minus 2 (which are the start & end
+#times) 
+def domainsPerRoom():
+	room_list = defaultdict(int)
+	for key, value in room2report.iteritems():
+		if (len(room2report[key])-2) in room_list:
+			x = room_list[(len(room2report[key]))] + 1 
+			room_list[(len(room2report[key]))] = x
+		else:
+			room_list[(len(room2report[key]))-2] = 1
+	return room_list
+
+#used for rounding the minutes to the nearest 5 minutes
+def myround(x, base=5):
+    return int(base * round(float(x)/base))
+	
+#calculates the average amount of time spent in each room in question
+def timePerRoom():
+	time_list = defaultdict(int)
+	for key, value in room2report.iteritems():
+		d1_ts = value[0]
+		if len(value) > 1 and isinstance(value[0], float):
+			if isinstance(value[1], float):
+				d2_ts = value[1]
+				relevantTime = int(d2_ts-d1_ts) / 60
+				print relevantTime
+				#relevantTime = myround(openTime)
+			else: relevantTime = -10
+		else:
+			relevantTime = -10
+		if relevantTime in time_list:
+			x = time_list[relevantTime] + 1 
+			time_list[relevantTime] = x
+		else:
+			time_list[relevantTime] = 1
+	return time_list
 
 def main():
 	response = requests.get(API_URL)
@@ -131,12 +169,35 @@ def main():
 	for item in data['query_result']:
 		print item		
 	iterateRows(data['query_result']['data']['rows'])
-	#print room2report
-	#people_per_room_dict = countPeoplePerRoom(room2report)
-	#print people_per_room_dict
-	#userExcel(id2room)
-	#graphPeoplePerRoom(people_per_room_dict)
-
+	#working with args
+	args = sys.argv
+	if args[1] == "graph":
+		if args[2] == "users-per-room":
+			pDict = countPeoplePerRoom()
+			graphRoom(pDict)
+		elif args[2] == "domains-per-room":
+			dDict = domainsPerRoom()
+			graphRoom(dDict)
+		elif args[2] == "time-per-room":
+			tDict = timePerRoom()
+			graphRoom(tDict)
+		else:
+			print("You did not imput a valid graphing request, acceptable requests are")
+			print ('\n')
+			print ("1. users-per-room")
+			print ('\n')
+			print ("2. domains-per-room")
+			print ('\n')
+			print ("3. time-per-room")
+			print ('\n')
+	elif args[1] == "print":
+		"hi"
+	return
+		
+	#command line arguments:
+	#two options: graph or print
+	#graph options: 1. users-per-room 2. domains-per-room 3. time-per-room
+	#print options: 4. domains-by-rank, 5. users-by-rank 
         
 if __name__ == '__main__':
     main()
