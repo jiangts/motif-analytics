@@ -89,6 +89,7 @@ def calculateRoomTime(roomID, timeStamp, action):
 	#print timeStamp
 	d1 = datetime.strptime(timeStamp, fmt)
 	if action == "start":
+		print len(room2report[roomID])
 		if len(room2report[roomID]) > 0 and not isinstance(room2report[roomID][0], datetime):
 			print "room2report length > 1, and inserting at 0"
 			room2report[roomID].insert(0,d1)
