@@ -48,36 +48,31 @@ def decodeRow(row):
 	#data are missing pieces... if "open-room" there is no "room-id" yet and
 	#"origin" is only guaranteed to appear during an "add-session" call
 	userAction = row["method"]
-	userID = row["user-id"]
 	if userAction == "open-room":
-		roomID = 0
-	else:
-		roomID = row["room-id"]
-	if userAction == "add-session" and roomID != 0:
+		return
+	roomID = row["room-id"]
+	timeStamp = row["createdAt"]
+	userID = row["user-id"]
+	if userAction == "add-session":
+		calculateRoomTime(roomID, timeStamp, "start")
 		domainName = row["origin"]
 		room2report[roomID].append(domainName)
-	timeStamp = row["createdAt"]
-	
+	#since the room is already in existence, we need to check to see 
+	#if the room is being closed
+	if userAction == "close-room":
+		calculateRoomTime(roomID, timeStamp, "end")
+		
 	#generate all roomID to a list of users that are in the room
 	if roomID in room2users:
-		#since the room is already in existence, we need to check to see 
-		#if the room is being closed
-		if userAction == "close-room":
-			calculateRoomTime(roomID, timeStamp, "end")
 		if userID not in room2users[roomID]:
-			s = room2users[roomID] 
-			s.add(userID)
-			room2users[roomID] = s
+			room2users[roomID].add(userID)
 	else:
 		#if the roomID is not already stored, it is new, and we need to create a start date
 		room2users[roomID] = set([userID])
-		calculateRoomTime(roomID, timeStamp, "start")
 	#generate all userID to list of rooms they are a part of 
 	if userID in id2room:
 		if roomID not in id2room[userID]:
-			s2 = id2room[userID]
-			s2.add(roomID)
-			id2room[userID] = s2
+			id2room[userID].add(roomID)
 	else:
 		id2room[userID] = set([roomID])
 	return
@@ -88,18 +83,25 @@ def decodeRow(row):
 def calculateRoomTime(roomID, timeStamp, action):
 	#time = timeStamp[11:13] + '.' + timeStamp[14:16]
 	#time = float(time)
-	print timeStamp
-	timeStamp = timeStamp[0:8] + ' ' +timeStamp[9:]
-	print timeStamp
-	fmt = '%Y-%m-%d %H:%M:%S.%f'
+	#timeStamp example: 2018-02-28T09:04:11.310000
+	timeStamp = timeStamp[0:10] + ' ' +timeStamp[11:19]
+	fmt = '%Y-%m-%d %H:%M:%S'
+	#print timeStamp
 	d1 = datetime.strptime(timeStamp, fmt)
-	d1_ts = time.mktime(d1.timetuple())
 	if action == "start":
-		#room2report[roomID].insert(0,time)
-		room2report[roomID].insert(0,d1_ts)
-	else:
-		#room2report[roomID].insert(1,time)
-		room2report[roomID].insert(1,d1_ts)
+		if len(room2report[roomID]) > 0 and not isinstance(room2report[roomID][0], datetime):
+			print "room2report length > 1, and inserting at 0"
+			room2report[roomID].insert(0,d1)
+			print room2report[roomID]
+		if len(room2report[roomID]) == 0:
+			print "room2report length > 1, and inserting at 0"
+			room2report[roomID].append(d1)
+			print room2report[roomID]
+	if action == "end":
+		if len(room2report[roomID]) == 0:
+			room2report[roomID].append(d1)
+		else:
+			room2report[roomID].insert(1,d1)
 	return
 
 #gets metrics on total number of rooms and the number of people per room	
@@ -150,15 +152,21 @@ def timePerRoom():
 	time_list = defaultdict(int)
 	for key, value in room2report.iteritems():
 		d1_ts = value[0]
-		if len(value) > 1 and isinstance(value[0], float):
-			if isinstance(value[1], float):
-				d2_ts = value[1]
-				relevantTime = int(d2_ts-d1_ts) / 60
-				print relevantTime
-				#relevantTime = myround(openTime)
-			else: relevantTime = -10
+		print "value[0]: "
+		print value[0]
+		print type(value[0])
+		print len(value)
+		print value
+		if len(value) > 1 and isinstance(d1_ts, datetime) and isinstance(value[1], datetime):
+			d2_ts = value[1]
+			print d2_ts
+			diff = d2_ts-d1_ts
+			minutes = (diff.seconds) / 60
+			print (str(minutes) + ' Minutes')
+			relevantTime = minutes
+			print relevantTime
 		else:
-			relevantTime = -10
+			relevantTime = "No end time"
 		if relevantTime in time_list:
 			x = time_list[relevantTime] + 1 
 			time_list[relevantTime] = x
@@ -172,6 +180,7 @@ def main():
 	for item in data['query_result']:
 		print item		
 	iterateRows(data['query_result']['data']['rows'])
+	#print room2report
 	#working with args
 	
 def dont():
