@@ -37,8 +37,11 @@ room2users = defaultdict(set)
 #going through each row and then using a dict for mapping
 #attempting to aggregate data so that you can query by user id and by room
 def iterateRows(data):
+	count = 0
 	for row in data:
+		count += 1
 		decodeRow(row)
+	print count
 	return
 
 #by iterating through the data one time, we should capture all of the relevant 
@@ -48,18 +51,21 @@ def decodeRow(row):
 	#data are missing pieces... if "open-room" there is no "room-id" yet and
 	#"origin" is only guaranteed to appear during an "add-session" call
 	userAction = row["method"]
-	if userAction == "open-room":
+	if userAction == "open-room" or userAction == "join-room" or userAction == "leave-room" or userAction == "open-or-join" or userAction == "get-room":
 		return
 	roomID = row["room-id"]
 	timeStamp = row["createdAt"]
 	userID = row["user-id"]
+	if roomID == '4085':
+		print "this should be the row: "
+		print row
 	if userAction == "add-session":
 		calculateRoomTime(roomID, timeStamp, "start")
 		domainName = row["origin"]
 		room2report[roomID].append(domainName)
 	#since the room is already in existence, we need to check to see 
 	#if the room is being closed
-	if userAction == "close-room":
+	elif userAction == "close-room":
 		calculateRoomTime(roomID, timeStamp, "end")
 		
 	#generate all roomID to a list of users that are in the room
@@ -89,20 +95,27 @@ def calculateRoomTime(roomID, timeStamp, action):
 	#print timeStamp
 	d1 = datetime.strptime(timeStamp, fmt)
 	if action == "start":
-		print len(room2report[roomID])
-		if len(room2report[roomID]) > 0 and not isinstance(room2report[roomID][0], datetime):
-			print "room2report length > 1, and inserting at 0"
-			room2report[roomID].insert(0,d1)
-			print room2report[roomID]
+		if len(room2report[roomID]) > 0:
+			if isinstance(room2report[roomID][0], unicode):
+				if roomID == '4085':
+					print "room2report length > 1, and had a domain at 0"
+				room2report[roomID].insert(0,d1)
+				#print room2report[roomID]
 		if len(room2report[roomID]) == 0:
-			print "room2report length > 1, and inserting at 0"
+			if roomID == '4085':
+				print "room2report length == 0, and inserting at 0"
 			room2report[roomID].append(d1)
-			print room2report[roomID]
+		if roomID == '4085':
+			print "from start"
+			print room2report['4085']
 	if action == "end":
 		if len(room2report[roomID]) == 0:
 			room2report[roomID].append(d1)
 		else:
 			room2report[roomID].insert(1,d1)
+		if roomID == '4085':
+			print "from end"
+			print room2report['4085']
 	return
 
 #gets metrics on total number of rooms and the number of people per room	
