@@ -37,32 +37,40 @@ room2users = defaultdict(set)
 #going through each row and then using a dict for mapping
 #attempting to aggregate data so that you can query by user id and by room
 def iterateRows(data):
+	count_int = int(0)
+	print type(count_int)
 	count = 0
 	for row in data:
-		count += 1
-		decodeRow(row)
-	print count
+		#count += 1
+		count_int = decodeRow(row, count_int)
+		print count_int
+	print count_int
 	return
 
 #by iterating through the data one time, we should capture all of the relevant 
 #information into a dictionary
-def decodeRow(row):
+def decodeRow(row, count_int): 
 	#need to check the action before doing anything because some of the 
 	#data are missing pieces... if "open-room" there is no "room-id" yet and
 	#"origin" is only guaranteed to appear during an "add-session" call
 	userAction = row["method"]
 	if userAction == "open-room" or userAction == "join-room" or userAction == "leave-room" or userAction == "open-or-join" or userAction == "get-room":
-		return
+		return int(count_int)
 	roomID = row["room-id"]
 	timeStamp = row["createdAt"]
 	userID = row["user-id"]
 	if roomID == '4085':
+		#count_int += 1
 		print "this should be the row: "
 		print row
 	if userAction == "add-session":
+		count_int += 1
 		calculateRoomTime(roomID, timeStamp, "start")
 		domainName = row["origin"]
 		room2report[roomID].append(domainName)
+		if roomID == '4085':
+			print "from user action:"
+			print room2report['4085']
 	#since the room is already in existence, we need to check to see 
 	#if the room is being closed
 	elif userAction == "close-room":
@@ -81,7 +89,8 @@ def decodeRow(row):
 			id2room[userID].add(roomID)
 	else:
 		id2room[userID] = set([roomID])
-	return
+	
+	return int(count_int)
 
 #stores the room time in the 0 and 1 index of the room2report dictionary
 #at the 0 is the start time (when the room id is assigned) and at the 
@@ -94,28 +103,48 @@ def calculateRoomTime(roomID, timeStamp, action):
 	fmt = '%Y-%m-%d %H:%M:%S'
 	#print timeStamp
 	d1 = datetime.strptime(timeStamp, fmt)
-	if action == "start":
-		if len(room2report[roomID]) > 0:
-			if isinstance(room2report[roomID][0], unicode):
-				if roomID == '4085':
-					print "room2report length > 1, and had a domain at 0"
-				room2report[roomID].insert(0,d1)
-				#print room2report[roomID]
-		if len(room2report[roomID]) == 0:
-			if roomID == '4085':
-				print "room2report length == 0, and inserting at 0"
-			room2report[roomID].append(d1)
-		if roomID == '4085':
-			print "from start"
-			print room2report['4085']
-	if action == "end":
-		if len(room2report[roomID]) == 0:
-			room2report[roomID].append(d1)
+	if roomID == '4085':
+		print "before anything: "
+		print room2report['4085']
+	if len(room2report[roomID]) > 0:
+	#there is already something in the list
+		if isinstance(room2report[roomID][0], datetime):
+		#check to see if the list at 0 is an instance of time
+			holder = d1
+			if room2report[roomID][0] > d1:
+			#if the new value is less than the old value, then replace it
+				holder = room2report[roomID][0]
+				room2report[roomID][0] = d1
+				if len(room2report[roomID]) > 1:
+			#if the length of the list is at least 2, then there could be a start 
+			#and end time already inputted
+					if isinstance(room2report[roomID][1], datetime): 
+				#we know there is already an endtime stored
+						if room2report[roomID][1] < d1:
+					#the new time is greater than the current time, so we replace it
+							room2report[roomID][1] = d1
+					else:
+				#if the 1 index is an origin, we should insert the time and push down
+				#the rest of the list
+						room2report[roomID].insert(1,d1)
+				else:
+			#this is the case where the room2report for this number is not empty
+			#but it does not have any datetime values inputted yet
+					room2report[roomID].append(holder)
+			else:
+			#d1 > 0 so need to see if its also > 1, if so, insert
+				if len(room2report[roomID]) > 1:
+					if isinstance(room2report[roomID][1], datetime):
+						if room2report[roomID][1] < d1:
+							room2report[roomID][1] = d1
+				else:
+					#just insert it bc d1 > 0 but there is no 1
+					room2report[roomID].insert(1,d1)
 		else:
-			room2report[roomID].insert(1,d1)
-		if roomID == '4085':
-			print "from end"
-			print room2report['4085']
+		#its not an instance so just insert it
+			room2report[roomID].insert(0,d1)
+	else:
+		room2report[roomID].append(d1)
 	return
 
 #gets metrics on total number of rooms and the number of people per room	
@@ -166,21 +195,22 @@ def timePerRoom():
 	time_list = defaultdict(int)
 	for key, value in room2report.iteritems():
 		d1_ts = value[0]
-		print "value[0]: "
-		print value[0]
-		print type(value[0])
-		print len(value)
-		print value
 		if len(value) > 1 and isinstance(d1_ts, datetime) and isinstance(value[1], datetime):
 			d2_ts = value[1]
-			print d2_ts
+			holder = d1_ts
+			d1_ts = min([d1_ts, d2_ts])
+			d2_ts = max([holder, d2_ts])
 			diff = d2_ts-d1_ts
+			print "this is diff:"
+			print diff
 			minutes = (diff.seconds) / 60
 			print (str(minutes) + ' Minutes')
 			relevantTime = minutes
+			if relevantTime > 60:
+				relevantTime = 60
 			print relevantTime
 		else:
-			relevantTime = "No end time"
+			relevantTime = -1000
 		if relevantTime in time_list:
 			x = time_list[relevantTime] + 1 
 			time_list[relevantTime] = x
@@ -194,10 +224,12 @@ def main():
 	for item in data['query_result']:
 		print item		
 	iterateRows(data['query_result']['data']['rows'])
+	print "Final row: "
+	print room2report['4085']
 	#print room2report
 	#working with args
 	
-def dont():
+#def dont():
 	args = sys.argv
 	if args[1] == "graph":
 		if args[2] == "users-per-room":
