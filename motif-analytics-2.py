@@ -110,15 +110,16 @@ def countPeoplePerRoom():
 	return people_per_room_list
 
 #creates a simple matplotlib graph for the number of people per room
-def graphRoom(people_per_room_dict):
+def graphRoom(people_per_room_dict, x_axis_label, y_axis_label, title_label):
 	values_list = list((people_per_room_dict).values())
 	keys_list = list((people_per_room_dict).keys())
 	max_users_per_room = max(keys_list)
 	y_pos = np.arange(len(keys_list))
 	plt.barh(y_pos, values_list, align='center', alpha=0.5)
 	plt.yticks(y_pos, keys_list)
-	plt.xlabel('Count')
-	plt.title('Instances')
+	plt.xlabel(x_axis_label)
+	plt.ylabel(y_axis_label)
+	plt.title(title_label)
 	plt.show()
 	print type(keys_list[0])
 	print type(values_list[0])
@@ -177,13 +178,13 @@ def main():
 	if args[1] == "graph":
 		if args[2] == "users-per-room":
 			pDict = countPeoplePerRoom()
-			graphRoom(pDict)
+			graphRoom(pDict, "Count", "Number of Users", "Users per Room")
 		elif args[2] == "domains-per-room":
 			dDict = domainsPerRoom()
-			graphRoom(dDict)
+			graphRoom(dDict, "Count", "Number of Domains", "Domains per Room")
 		elif args[2] == "time-per-room":
 			tDict = timePerRoom()
-			graphRoom(tDict)
+			graphRoom(tDict, "Count", "Time (min)", "Minutes per Room")
 		else:
 			print("You did not imput a valid graphing request, acceptable requests are")
 			print ('\n')
