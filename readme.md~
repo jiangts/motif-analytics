@@ -1,4 +1,4 @@
-
+<<<<<<< HEAD
 put your analytics key inside of `~/.bash_profile` for analytics on the entire database, run the motif-analytics-2.py program.
 
 there are six possible inputs of the analytics file:
@@ -18,7 +18,7 @@ there are six possible inputs of the analytics file:
 example of commandline if you want a graph to be generated from the data: python motif-analytics-2.py graph users-per-room
 
 example of commandline if you want a ranked list of length 10 from the data : python motif-analytics-2.py print domains-by-rank 10
-
+=======
 put your analytics key inside of `~/.bash_profile`
 for analytics on the entire database, run the motif-analytics-2.py program.
 
@@ -47,3 +47,4 @@ python motif-analytics-2.py graph users-per-room
 
 example of commandline if you want a ranked list of length 10 from the data :
 python motif-analytics-2.py print domains-by-rank 10
+>>>>>>> 05bd92dd9f374238b37f7104e8582a4917b98014
