@@ -40,12 +40,12 @@ def iterateRows(data):
 	for row in data:
 		count += 1
 		count_int, count_int_2 = decodeRow(row, count_int, count_int_2)
-	print "num add sessions: "
-	print count_int
-	print "num close room: "
-	print count_int_2
-	print "total count"
-	print count
+	#print "num add sessions: "
+	#print count_int
+	#print "num close room: "
+	#print count_int_2
+	#print "total count: "
+	#print count
 	return
 
 #by iterating through the data one time, we should capture all of the relevant 
@@ -142,6 +142,19 @@ def domainsPerRoom():
 def myround(x, base=5):
     return int(base * round(float(x)/base))
 	
+#finds the length of time that a room was opened by calculating the difference
+#between the first and the last timestamp recorded by an add-session or close-room
+def lengthOpened(roomID):
+	timesList = room2timeStamp[roomID]
+	if len(timesList) > 1:
+		d1 = min(timesList)
+		d2 = max(timesList)
+		diff = d2 - d1
+		minutes = (diff.seconds) / 60
+		return minutes
+	else:
+		return 0
+		
 #calculates the average amount of time spent in each room in question
 def timePerRoom():
 	time_list = defaultdict(int)
@@ -210,6 +223,23 @@ def printList(a_list):
 		string_x = str((x + 1))
 		one_line =  string_x + "." + str(a_list[x])
 		print one_line
+		
+def rankByTime(desiredLength):
+	returnList = range(desiredLength)
+	user2time = defaultdict(int)
+	for key, value in id2room.iteritems():
+		#for each room that was here, we need to find the length of time the room 
+		#was opened, and add it to the running total of minutes for the user in the 
+		#user2time dict
+		runningTotal = 0
+		for roomID in value:
+			runningTotal = runningTotal + lengthOpened(roomID)
+		user2time[key] = runningTotal
+	for x in range(desiredLength):
+		keyToRemove = keyWithMaxVal(user2time)
+		returnList[x] = keyToRemove
+		user2time.pop(keyToRemove)
+	return returnList
 
 def main():
 	response = requests.get(API_URL)
@@ -233,7 +263,7 @@ def main():
 			tDict = timePerRoom()
 			graphRoom(tDict, "Count", "Time (min)", "Minutes per Room")
 		else:
-			print("You did not imput a valid graphing request, acceptable requests are")
+			print("You did not imput a valid graphing request, acceptable requests are: ")
 			print ('\n')
 			print ("1. users-per-room")
 			print ('\n')
@@ -251,10 +281,10 @@ def main():
 			a_list = rankByAppearance("users", desiredLength)
 			printList(a_list)
 		elif args[2] == "users-by-rank-time":
-			a_list = rankByTime()
-			printList(a_list, desiredLength)
+			a_list = rankByTime(desiredLength)
+			printList(a_list)
 		else:
-			print("You did not imput a valid printing request, acceptable requests are")
+			print("You did not imput a valid printing request, acceptable requests are: ")
 			print ('\n')
 			print ("1. domains-by-rank")
 			print ('\n')
