@@ -60,6 +60,7 @@ def decodeRow(row, count_int, count_int_2):
 	roomID = row["room-id"]
 	timeStamp = row["createdAt"]
 	userID = row["user-id"]
+	id2room[userID].add(roomID)
 	if userAction == "add-session":
 		count_int += 1
 		calculateRoomTime(roomID, timeStamp)
@@ -271,6 +272,7 @@ def main():
 			print ('\n')
 			print ("3. time-per-room")
 			print ('\n')
+			return
 	elif args[1] == "print":
 		if len(args) > 3:
 			desiredLength = int(args[3])
@@ -292,6 +294,51 @@ def main():
 			print ('\n')
 			print ("3. users-by-rank-time")
 			print ('\n')
+			return
+	elif args[1] == "user-query":
+		#options: total-time, room-count, room-ids, average-time, associated-ids
+		if len(args) > 2:
+			userID = args[3]
+			if args[2] == "total-time":
+				rooms = id2room[userID]
+				print rooms
+				totalTime = 0
+				for room in rooms:
+					totalTime = totalTime + lengthOpened(room)
+				print str(userID) + " spent " + str(totalTime) + " minutes using Motif" 
+				return
+			elif args[2] == "room-count":
+				rooms = id2room[userID]
+				totalRooms = len(rooms)
+				print str(userID) + "participated in " + str(totalRooms) + "rooms."
+				return
+			elif args[2] == "room-ids":
+				rooms = id2room[userID]
+				print str(userID) + " has participated in the following rooms: "
+				print rooms
+			elif args[2] == "average-time":
+				rooms = id2room[userID]
+				totalRoomCount = len(rooms)
+				totalTime = 0 
+				for room in rooms:
+					totalTime = totalTime + lengthOpened(room)
+				if totalTime > 0:
+					avg_time = totalTime/totalRoomCount
+				print str(userID) + " spent an average of " + str(avg_time) + " minutes per room."
+			#elif args[2] == "associated-ids":
+				#rooms = id2room[userID]
+				#total_set = set()
+				#for room in rooms:
+					#for user in room2users[room]:
+						total_set.add(user)
+				#print str(userID) + " is associated with the following users: "
+				#print total_set
+			else:
+				print "please submit a valid query, the options are: "
+				print "total-time, room-count, room-ids, average-time, associated-ids"
+		else:
+			print "ensure that you type the correct amount of arguments in the format:"
+			print "user-query query-type user-id"
 	return
 		
 	#command line arguments:
