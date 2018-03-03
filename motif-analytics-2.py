@@ -330,7 +330,7 @@ def main():
 				#total_set = set()
 				#for room in rooms:
 					#for user in room2users[room]:
-						total_set.add(user)
+						#total_set.add(user)
 				#print str(userID) + " is associated with the following users: "
 				#print total_set
 			else:
